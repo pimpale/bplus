@@ -13,15 +13,15 @@ pub enum TokenKind {
   Case,     // case
   Of,       // of
   Val,      // val
-  Struct, // struct
-  Enum,   // enum
-  Let,      // let
+  Struct,   // struct
+  Enum,     // enum
   In,       // in
   // Literals and constants
   Type,                                   // type
   Label(Vec<u8>),                         // 'label
   Inf,                                    // inf
   Nan,                                    // nan
+  Unit,                                   // ()
   Never,                                  // !
   Bool(bool),                             // true, false
   String { value: Vec<u8>, block: bool }, // "string"
@@ -46,6 +46,7 @@ pub enum TokenKind {
   Greater,      // >
   GreaterEqual, // >=
   // Assignment
+  Define,      // :=
   Assign,      // =
   PlusAssign,  // +=
   MinusAssign, // -=
@@ -69,6 +70,7 @@ pub enum TokenKind {
   BraceRight,   // }
   Constrain,    // :
   ModuleAccess, // .
+  Sequence,    // ;
   // Comments, and Attributes
   Metadata { value: Vec<u8>, significant: bool }, // #!attribute and # comment
 }

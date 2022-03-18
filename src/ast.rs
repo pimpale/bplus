@@ -63,7 +63,8 @@ pub enum BinaryOpKind {
 pub enum ExprKind {
   // An error when parsing
   Error,
-  Nil,
+  Unit,
+  Never,
   Int(BigInt),
   Bool(bool),
   Float(BigRational),
@@ -85,7 +86,6 @@ pub enum ExprKind {
   // these fields can only be used with module access
   // they signify a memory ref, uniqref, or deref
   Ref,
-  UniqRef,
   Deref,
   // Matches an expression to the first matching pattern and destructures it
   CaseOf {

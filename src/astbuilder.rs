@@ -181,7 +181,7 @@ fn parse_exact_group<TkIter: Iterator<Item = Token>>(
   dlogger: &mut DiagnosticLogger,
 ) -> Expr {
   let metadata = get_metadata(tkiter);
-  assert!(tkiter.peek_nth(0).unwrap().kind == Some(TokenKind::ParenLeft));
+  assert!(tkiter.peek_nth(0).unwrap().kind == Some(TokenKind::BraceLeft));
   let Token { range: lrange, .. } = tkiter.next().unwrap();
 
   let body = Box::new(parse_expr(tkiter, dlogger));
@@ -191,13 +191,13 @@ fn parse_exact_group<TkIter: Iterator<Item = Token>>(
     kind,
   } = tkiter.next().unwrap();
   match kind {
-    Some(TokenKind::ParenRight) => Expr {
+    Some(TokenKind::BraceRight) => Expr {
       range: union_of(lrange, rrange),
       metadata,
       kind: ExprKind::Group(body),
     },
     _ => {
-      dlogger.log_unexpected_token_specific(rrange, Some(TokenKind::ParenRight), kind);
+      dlogger.log_unexpected_token_specific(rrange, Some(TokenKind::BraceRight), kind);
       Expr {
         range: union_of(lrange, body.range),
         metadata,
@@ -246,35 +246,6 @@ fn parse_exact_builtin<TkIter: Iterator<Item = Token>>(
     }
   } else {
     unimplemented!()
-  }
-}
-
-
-// parses an exact bind or panics
-fn parse_exact_bind<TkIter: Iterator<Item = Token>>(
-  tkiter: &mut PeekMoreIterator<TkIter>,
-  dlogger: &mut DiagnosticLogger,
-) -> Expr {
-  let metadata = get_metadata(tkiter);
-  assert!(tkiter.peek_nth(0).unwrap().kind == Some(TokenKind::BindVar));
-
-  let bind_tk = tkiter.next().unwrap();
-  let identifier_tk = tkiter.next().unwrap();
-
-  match identifier_tk.kind {
-    Some(TokenKind::Identifier(identifier)) => Expr {
-      metadata,
-      range: union_of(bind_tk.range, identifier_tk.range),
-      kind: ExprKind::Bind(identifier),
-    },
-    _ => {
-      dlogger.log_unexpected_bind_target(identifier_tk.range);
-      Expr {
-        metadata,
-        range: union_of(bind_tk.range, identifier_tk.range),
-        kind: ExprKind::Error,
-      }
-    }
   }
 }
 
@@ -385,21 +356,21 @@ fn parse_exact_string<TkIter: Iterator<Item = Token>>(
   }
 }
 
-// parses a lifetime
-fn parse_exact_lifetime<TkIter: Iterator<Item = Token>>(
+// parses a label
+fn parse_exact_label<TkIter: Iterator<Item = Token>>(
   tkiter: &mut PeekMoreIterator<TkIter>,
   _: &mut DiagnosticLogger,
 ) -> Expr {
   let metadata = get_metadata(tkiter);
   if let Token {
     range,
-    kind: Some(TokenKind::Lifetime(lt)),
+    kind: Some(TokenKind::Label(lt)),
   } = tkiter.next().unwrap()
   {
     Expr {
       metadata,
       range,
-      kind: ExprKind::Lifetime(lt),
+      kind: ExprKind::Label(lt),
     }
   } else {
     unreachable!();
@@ -506,17 +477,17 @@ fn decide_term<TkIter: Iterator<Item = Token>>(
     TokenKind::Int(_) => Some(parse_exact_int::<TkIter>),
     TokenKind::Float(_) => Some(parse_exact_rational::<TkIter>),
     TokenKind::String { .. } => Some(parse_exact_string::<TkIter>),
-    TokenKind::BraceLeft => Some(parse_exact_struct_literal::<TkIter>),
+    TokenKind::BraceLeft => Some(parse_exact_group::<TkIter>),
     TokenKind::ParenLeft => Some(parse_exact_group::<TkIter>),
     TokenKind::Case => Some(parse_exact_case::<TkIter>),
-    TokenKind::Lifetime(_) => Some(parse_exact_lifetime::<TkIter>),
+    TokenKind::Label(_) => Some(parse_exact_label::<TkIter>),
     TokenKind::Type => Some(parse_exact_type::<TkIter>),
     TokenKind::Identifier(_) => Some(parse_exact_reference::<TkIter>),
     TokenKind::Builtin(_) => Some(parse_exact_builtin::<TkIter>),
+    TokenKind::Unit => Some(|a, b| parse_simple(TokenKind::Ref, ExprKind::Unit)(a, b)),
+    TokenKind::Never => Some(|a, b| parse_simple(TokenKind::Ref, ExprKind::Never)(a, b)),
     TokenKind::Ref => Some(|a, b| parse_simple(TokenKind::Ref, ExprKind::Ref)(a, b)),
-    TokenKind::UniqRef => Some(|a, b| parse_simple(TokenKind::UniqRef, ExprKind::UniqRef)(a, b)),
     TokenKind::Deref => Some(|a, b| parse_simple(TokenKind::Deref, ExprKind::Deref)(a, b)),
-    TokenKind::BindVar => Some(parse_exact_bind::<TkIter>),
     TokenKind::Val => Some(|a, b| parse_unop(TokenKind::Val, |t| ExprKind::Val(t))(a, b)),
     TokenKind::Struct => Some(|a, b| parse_unop(TokenKind::Struct, |t| ExprKind::Struct(t))(a, b)),
     TokenKind::Enum => Some(|a, b| parse_unop(TokenKind::Enum, |t| ExprKind::Enum(t))(a, b)),
